@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gistord Messenger - Pro Edition</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="wrapper">
+        <!-- УВЕДОМЛЕНИЯ -->
+        <div id="toast-container"></div>
+
+        <!-- ЯЗЫКОВАЯ ПАНЕЛЬ -->
+        <div id="lang-panel">
+            <button class="lang-btn active" onclick="setLanguage('ru', event)">RU</button>
+            <button class="lang-btn" onclick="setLanguage('en', event)">EN</button>
+            <button class="lang-btn" onclick="setLanguage('by', event)">BY</button>
+        </div>
+
+        <div id="bg-logo">GISTORD</div>
+
+        <!-- ОКНО АВТОРИЗАЦИИ -->
+        <div id="auth-box" class="hud-card">
+            <div class="hud-header" id="auth-title">Gistord // Авторизация</div>
+            <div class="subtitle" id="auth-subtitle">Введите данные для доступа к системе</div>
+
+            <div class="input-group">
+                <input type="text" id="username" class="hud-input" placeholder="Имя пользователя (Юзернейм)">
+            </div>
+            
+            <div class="input-group password-container">
+                <input type="password" id="password" class="hud-input" placeholder="Пароль">
+                <button type="button" id="toggle-pass-btn" onclick="togglePasswordVisibility()" title="Показать пароль">👁</button>
+            </div>
+
+            <button class="hud-btn glow-btn" id="main-action-btn" onclick="handleAuth()">Войти</button>
+            <button class="hud-btn hud-btn-secondary" id="switch-mode-btn" onclick="toggleAuthMode()">Нет аккаунта? Зарегистрироваться</button>
+        </div>
+
+        <!-- ГЛАВНОЕ ОКНО МЕССЕНДЖЕРА -->
+        <div id="messenger-app" style="display: none;" class="hud-card app-layout">
+            
+            <!-- Левая панель серверов -->
+            <div id="servers-sidebar">
+                <div class="server-icon active" title="Личные чаты / Друзья" onclick="switchNav('dms', this)">💬</div>
+                <div class="sidebar-divider"></div>
+                <div class="server-icon" title="Gistord Official" onclick="switchNav('server', this, 'Gistord Network', 'Общий чат')">GS</div>
+                <div class="server-icon" title="Criminal Syndicate" onclick="switchNav('server', this, 'Criminal Syndicate', 'Ограбления / Стрелы')">CR</div>
+                <div class="server-icon" title="LSPD / Gov" onclick="switchNav('server', this, 'LSPD / Gov', 'Диспетчерская')">GO</div>
+                <div id="admin-server-icon" class="server-icon admin-badge-icon" title="Админ-мониторинг (Mixxi)" onclick="openAdminPanel()" style="display: none;">🛡</div>
+            </div>
+
+            <!-- Вторая панель (Директы, Друзья или Каналы) -->
+            <div id="channels-sidebar">
+                <div class="channels-header">
+                    <span id="sidebar-section-title">Личные сообщения</span>
+                    <button class="add-friend-tab-btn" onclick="openAddFriendModal()" title="Добавить друга">➕</button>
+                </div>
+                
+                <div id="dms-list" class="channels-list">
+                    <div class="channel-item active" onclick="openChat('Администратор', 'dm', this)">
+                        <span class="status-dot-online"></span> Администратор
+                    </div>
+                    <div class="channel-item" onclick="openChat('Support Bot', 'dm', this)">
+                        <span class="status-dot-online"></span> Support Bot
+                    </div>
+                    <div id="dynamic-friends-container"></div>
+                </div>
+
+                <div id="server-channels-list" class="channels-list" style="display: none;">
+                    <div class="channel-item active" onclick="openChat('общий-чат', 'server', this)"># общий-чат</div>
+                    <div class="channel-item" onclick="openChat('рынок', 'server', this)"># рынок</div>
+                    <div class="channel-item" onclick="openChat('голосовой-текст', 'server', this)"># голосовой-текст</div>
+                </div>
+
+                <div class="user-panel-mini">
+                    <div class="user-info-mini" onclick="openSettings()" style="cursor: pointer;" title="Изменить профиль">
+                        <div class="mini-avatar" id="mini-avatar-preview"></div>
+                        <div class="mini-user-meta">
+                            <span id="logged-username-disp">User</span>
+                            <span id="mini-user-bio" class="mini-bio">Нет статуса</span>
+                        </div>
+                    </div>
+                    <button class="settings-gear-btn" onclick="openSettings()" title="Настройки">⚙</button>
+                </div>
+            </div>
+
+            <!-- Область чата -->
+            <div id="chat-main-area">
+                <div class="chat-hud-header">
+                    <div class="chat-title-wrapper">
+                        <span class="hud-status-dot"></span>
+                        <span id="channel-title">Личный чат // Администратор</span>
+                    </div>
+                    <div class="chat-header-actions">
+                        <button class="call-action-btn" onclick="startAudioCall()" title="Голосовой звонок">📞</button>
+                        <button class="call-action-btn" onclick="startVideoCall()" title="Видеозвонок">📷</button>
+                        <button class="logout-btn" onclick="logout()" id="logout-text">Выйти</button>
+                    </div>
+                </div>
+                
+                <!-- ОКНО ЗВОНКА (ПОДДЕРЖКА ПК И ТЕЛЕФОНОВ) -->
+                <div id="call-overlay" style="display: none;">
+                    <div class="call-screen">
+                        <div class="call-status-text" id="call-status-msg">Идет вызов...</div>
+                        <div class="call-avatar-pulse" id="call-avatar-container">🎙</div>
+                        <div class="call-controls-bar">
+                            <button id="mute-btn" class="call-control-btn" onclick="toggleMute()" title="Мут микрофона">🎤 Мут</button>
+                            <button id="cam-btn" class="call-control-btn" onclick="toggleCam()" title="Камера">📷 Камера</button>
+                            <button class="call-control-btn danger-call-btn" onclick="endCall()" title="Сбросить">📞 Сбросить</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="messages-view"></div>
+
+                <div class="chat-controls">
+                    <input type="text" id="msg-input" placeholder="Введите сообщение..." onkeydown="if(event.key==='Enter') sendMessage();">
+                    <button class="hud-btn glow-btn" id="send-btn" onclick="sendMessage()">Отправить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- МОДАЛЬНОЕ ОКНО НАСТРОЕК И ПРОФИЛЯ -->
+        <div id="settings-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-card hud-card" style="width: 440px;">
+                <div class="hud-header">Настройки и Профиль</div>
+                
+                <div style="margin-top: 15px;">
+                    <div style="font-size: 13px; font-weight: bold; color: var(--accent-color); margin-bottom: 8px;">Редактирование профиля</div>
+                    
+                    <div class="input-group" style="margin-bottom: 8px;">
+                        <label style="font-size: 11px; color: #777;">Юзернейм (нельзя изменить):</label>
+                        <input type="text" id="profile-fixed-username" class="hud-input" disabled style="opacity: 0.6; cursor: not-allowed;">
+                    </div>
+                    
+                    <div class="input-group" style="margin-bottom: 8px;">
+                        <input type="text" id="profile-display-name" class="hud-input" placeholder="Отображаемое имя">
+                    </div>
+
+                    <div class="input-group" style="margin-bottom: 8px;">
+                        <input type="text" id="profile-avatar-url" class="hud-input" placeholder="Ссылка на аватарку (URL изображения)">
+                    </div>
+
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <input type="text" id="profile-bio" class="hud-input" placeholder="Статус / Описание профиля">
+                    </div>
+
+                    <button class="hud-btn glow-btn" onclick="saveProfileChanges()">Сохранить профиль</button>
+                </div>
+
+                <div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                    <div class="setting-row" style="margin-top:0; margin-bottom: 10px;">
+                        <label>Звуки интерфейса (Discord):</label>
+                        <input type="checkbox" id="setting-sounds" checked>
+                    </div>
+                    <div class="setting-row">
+                        <label>Неоновый цвет:</label>
+                        <select id="setting-theme" onchange="changeTheme(this.value)">
+                            <option value="#33ff33">Кибер-Зеленый</option>
+                            <option value="#00d2ff">Неоновый Голубой</option>
+                            <option value="#ff3366">Криминальный Розовый</option>
+                            <option value="#ffaa00">Янтарный Золотой</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                    <button class="hud-btn hud-btn-secondary" style="width: 120px;" onclick="closeSettings()">Закрыть</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ ДРУГА -->
+        <div id="add-friend-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-card hud-card" style="width: 380px;">
+                <div class="hud-header">Добавить друга</div>
+                <div class="subtitle">Введите точный юзернейм друга для связи</div>
+                
+                <div class="input-group">
+                    <input type="text" id="friend-username-input" class="hud-input" placeholder="Юзернейм (например, Alex99)">
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button class="hud-btn glow-btn" onclick="sendFriendRequest()">Добавить</button>
+                    <button class="hud-btn hud-btn-secondary" onclick="closeAddFriendModal()">Отмена</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ АДМИНИСТРАТОРА (MIXXI) -->
+        <div id="admin-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-card hud-card" style="width: 600px;">
+                <div class="hud-header" style="color: #ff3333;">🛡 Панель мониторинга (Mixxi)</div>
+                <div class="subtitle">Управление банами и мутами пользователей</div>
+                
+                <div class="admin-controls-row">
+                    <input type="text" id="admin-target-user" class="hud-input" placeholder="Имя пользователя">
+                    <button class="hud-btn" style="background: #ff3333; width: 120px;" onclick="adminBanUser()">Забанить</button>
+                    <button class="hud-btn hud-btn-secondary" style="width: 120px;" onclick="adminMuteUser()">Мут</button>
+                </div>
+
+                <div style="margin-top: 15px; font-size: 13px; color: #888; margin-bottom: 5px;">Заблокированные аккаунты:</div>
+                <div id="banned-users-list" style="background: rgba(0,0,0,0.5); border-radius: 8px; padding: 10px; height: 120px; overflow-y: auto; font-family: monospace; font-size: 12px;"></div>
+
+                <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                    <button class="hud-btn glow-btn" style="width: 120px;" onclick="closeAdminPanel()">Закрыть</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
